@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,11 +13,8 @@ import (
 	"github.com/prometheus/common/expfmt"
 )
 
-const (
-	file = "in.yaml"        // input file
-	addr = "localhost:8080" // server address
-)
-
+var file = flag.String("in", "in.yaml", "path to input .yaml file ")
+var addr = flag.String("addr", "localhost:8080", "http service adress")
 var metrics *dto.MetricFamily
 
 /*
@@ -27,12 +25,13 @@ All errors woud be written in response - this way formating yaml could be speeds
 after first initial readng of input.
 */
 func main() {
+	flag.Parse()
 	metrics = new(dto.MetricFamily)
-	if err := readInput(file, metrics); err != nil {
+	if err := readInput(*file, metrics); err != nil {
 		log.Fatalf("Input data  erro: %v", err)
 	}
 	http.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := readInput(file, metrics); err != nil {
+		if err := readInput(*file, metrics); err != nil {
 			fmt.Fprintln(w, "Input data reading error:", err)
 		} else {
 			enc := expfmt.NewEncoder(w, expfmt.FmtOpenMetrics)
@@ -41,8 +40,8 @@ func main() {
 			}
 		}
 	}))
-	log.Println("Listening on", addr)
-	log.Fatal(http.ListenAndServe(addr, nil))
+	log.Println("Listening on", *addr)
+	log.Fatal(http.ListenAndServe(*addr, nil))
 }
 
 /*
