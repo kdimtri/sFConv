@@ -19,6 +19,13 @@ const (
 
 var metrics *dto.MetricFamily
 
+/*
+First time readInput() runs to read and decode input.
+Second run of readInput() would't do anything until input file
+would be modifyed.
+All errors woud be written in response - this way formating yaml could be speeds up
+after first initial readng of input.
+*/
 func main() {
 	metrics = new(dto.MetricFamily)
 	if err := readInput(file, metrics); err != nil {
@@ -38,6 +45,15 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
+/*
+readTime holds last time input were read
+	and if readTime is zero (no reads) or input
+	were modifyed after - input reads
+modTime holds modification time from input file
+	that were registred while last time input were read.
+	This way happens overCompensation that shuld report
+	if some thing were changed in input file or not
+*/
 var readTime, modTime time.Time
 
 func readInput(file string, metrics *dto.MetricFamily) error {
@@ -54,7 +70,7 @@ func readInput(file string, metrics *dto.MetricFamily) error {
 		modTime = stat.ModTime()
 		readTime = time.Now()
 		dec := yaml.NewDecoder(r)
-		if err := dec.Decode(metrics); err != nil /* && err != io.EOF */ {
+		if err := dec.Decode(metrics); err != nil {
 			return fmt.Errorf("Error decoding File: %q\n: %v\n", file, err)
 		}
 		log.Printf("File :%q has being read  at[ %v ]", file, readTime)
